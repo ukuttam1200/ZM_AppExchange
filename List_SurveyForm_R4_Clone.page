@@ -1,0 +1,836 @@
+<apex:page controller="List_SurveyFormController_R4_Clone" showHeader="false">
+
+    <html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <head>
+        <title>List Survey Form</title>
+    </head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <c:List_Resources />
+    
+    <style>
+        .closePromptDiv{top: -1.8rem !important;}
+        .promtHeader{padding:0!important; border-bottom: none!important;} 
+        .closePrompt{width: 20px!important; cursor: pointer!important;}
+        .promptFooter{padding:0!important; border-top: none!important;}
+    </style>
+    
+    <script>
+    
+        //var assets = '/resource/1488591837000/SLDS';
+        var assets = '{!$Resource.List_SLDS}'; 
+        var RequireFields = [];
+        var RequireFieldsElementID = [];
+        var RequireFieldsType = [];
+        //ALJS Initialization   
+        j$.aljsInit({
+          assetsLocation: assets,
+          scoped: true
+        });
+        
+        j$(function()
+        {
+            var showPrompt = '{!$CurrentPage.parameters.displayPrompt}';
+            var releaseNotes = `{!objTemplate.Release_Notes__c}`;
+            /*if(showPrompt == 'true' && releaseNotes){
+                j$(".promtSection").show();
+            }
+            else 
+            {
+                j$('.slds-backdrop').remove();
+            }*/ 
+            
+            /*close prompt*/
+            j$(".closePrompt,.promptOkay").click(function()
+            {
+                j$(this).closest(".promtSection").hide();
+                j$('.slds-backdrop').remove();
+            })
+            /*close prompt*/
+            
+            /*floating div*/
+            var $floatingbox = j$('.floating-box');
+	
+        	if(j$('.bodySection').length > 0)
+        	{
+        	
+        		var bodyY = parseInt(j$('.bodySection').offset().top) - 20;
+        		var originalX = $floatingbox.css('margin-left');
+        	
+        		j$(window).scroll(function () 
+        		{ 
+        			var scrollY = j$(window).scrollTop();
+        			var isfixed = $floatingbox.css('position') == 'fixed';
+        			if($floatingbox.length > 0)
+        			{
+        			
+        				if ( scrollY > bodyY && !isfixed ) 
+        				{
+        					$floatingbox.stop().css({
+        						position: 'fixed',
+        						top: 20,
+        						marginLeft: -500
+        					});
+        				} 
+        				else if ( scrollY < bodyY && isfixed ) 
+        				{
+        					$floatingbox.css({
+        						position: 'relative',
+        						left: 0,
+        						top: 0,
+        						marginLeft: originalX
+        					});
+        				}
+        			}
+        		});
+        	}
+            /*floating div*/
+            
+            
+            
+            var valid = '{!validForm}';
+            if(valid == 'false'){
+                j$(".overlayErrorDiv").show();/*.delay(5000).queue(function(n) {
+                  j$(this).fadeOut();
+                  n();
+                });*/
+            }
+            
+            /*Page - less content issue*/
+            $wHeight = screen.height;
+            $wContainer = $wHeight - 12;
+            j$('.mainContainer').css('min-height', $wContainer); 
+            /*Page - less content issue*/
+            
+            /*Picklist issue in Mobiles*/
+            if(window.innerWidth <= 767)
+            {
+                $wWidth = screen.width;
+                $wWidthThrd = $wWidth/3;
+                j$('.slds-picklist__options').css('max-width', $wWidthThrd);
+            }
+            
+            var islocked = '{!isLocked}';
+            var isFormEditable = '{!isFormEditable}';
+            console.log('=========islocked==========',islocked);
+            console.log('==================isFormEditable================',isFormEditable);
+            if(islocked == 'true') {
+                
+                /* Disable Save & Submit buttons for inactive Templates allow Form Editable */ 
+                if(isFormEditable == 'true'){
+                    j$('button').not('.cancelBtn').prop('disabled', true);
+                }
+                else{
+                    /*j$('input, textarea, button, select, a ').not('.cancelBtn,.btnRevision').prop('disabled', true);*/
+                    j$('input, textarea, select, a ').prop('readonly', true);
+                    j$('input, textarea, select ').addClass('requireDisabled');
+                    j$('button').not('.cancelBtn,.btnRevision').prop('disabled', true);
+                    j$('.slds-input').prop('readonly',true);
+                    j$('.slds-input').addClass('requireDisabled');
+                }
+                
+                //Change Cancel button property
+                var cancelbtn = j$('.cancelBtn')[0];
+                cancelbtn.style.backgroundColor = "#0070d2";
+                cancelbtn.style.border = "1px solid #0070d2";
+                cancelbtn.innerText = 'Return to record'; 
+            }
+        })
+        
+    </script>
+    
+    <style>
+    /*Popup*/
+    .show
+        {
+            display : block;
+            position : fixed;
+            z-index: 100;
+            background: url("{!URLFOR($Resource.List_SLDS, 'images/spinner.gif')}") no-repeat;
+            background-size: 40px 40px;
+            background-repeat : no-repeat;
+            background-position : center;
+            left : 0;
+            bottom : 0;
+            right : 0;
+            top : 0;
+        }
+        .confirmBox
+        {
+            display: none;
+        }
+        .alertOverlay
+        {
+            visibility: visible;
+            opacity: 1;
+            transition: opacity 0.4s linear;
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: #000!important;
+            opacity: 0.6;
+            z-index: 9000;
+        }
+        .overlayErrorDiv, .overlaySuccessDiv
+    	{
+            color: white!important;
+            /*float: right;*/
+            text-align: center;
+            /*margin: 0 22%!important;*/
+            display:none;
+            z-index: 1011;
+        }
+    	.overlayErrorDiv .slds-theme--error, .overlaySuccessDiv .slds-theme--success
+    	{
+    	    border-radius: 3px!important;
+            min-height: 40px;
+            line-height: 28px!important;
+            text-align: left!important;
+            padding-left: 15px;
+            padding-top: 12px!important;
+            padding-bottom: 12px!important;
+            margin: 2px!important;
+    	}
+    	.overlayErrorDiv h2, .overlaySuccessDiv h2
+    	{
+    	    font-weight: normal!important;
+    	    font-size: 0.850rem!important;
+    	}
+    	.overlayErrorDiv .slds-notify-container, .overlayErrorDiv .slds-notify_container, .overlaySuccessDiv .slds-notify-container, .overlaySuccessDiv .slds-notify_container
+    	{
+	        max-width: 800px!important;
+	        left: auto!important;
+    	}
+    	.required{
+    	    color: red;
+    	}
+    	.fadeCss
+    	{
+    	    background-color: rgba(0,0,0,0.4);
+    	}
+    	.requireDisabled{
+    	    background-color: #e0e5ee !important;
+            border-color: #a8b7c7 !important;
+    	}
+    	.multiSelectRequired{
+    	   border: 1px solid #c23934 !important;
+    	}
+    	.tLeft{text-align: left!important;}
+    	.cHeaader{background-color: #54698d!important; color: #fff!important; font-size: 13.4px!important; padding: 0.6rem 1rem!important;border-bottom: none!important;} /*#0070d2*/ 
+    	.cList{font-size: 12px!important;}
+    	.cContent{border-bottom-left-radius: 3px!important; border-bottom-right-radius: 3px!important;}
+    /*Popup*/
+    </style>
+    
+    <script>
+         j$( document ).ready(function() 
+          {
+              console.log('buttonlabe========{!strButtonOverride}')
+             if('{!strButtonOverride}' != '')
+             {
+                j$("#submitBtnId").text('{!strButtonOverride}'); 
+             }
+             else
+             {
+                 j$("#submitBtnId").text('Submit'); 
+             }
+             
+             j$("textarea").each(function(index) {
+                j$(this).height(j$(this).get(0).scrollHeight);
+             });
+             /*j$("textarea").height(j$("textarea")[0].scrollHeight);*/ 
+             
+         });
+    </script>
+    
+    <apex:form id="List_SurveyForm">
+        
+        <apex:actionfunction name="saveResponseDraft" action="{!saveResponse}" status="waitStatus" rerender="messageDiv" oncomplete="afterSave()">
+            <apex:param id="FieldValue" name="FieldValue" value=""/>
+            <apex:param id="Type" name="Type" value="" assignTo="{!saveType}" />
+        </apex:actionFunction>
+        
+        <apex:actionfunction name="referenceSectionInputRender" action="{!sectionShowHideRefInput}" status="waitStatus" rerender="sectionsDiv"  >
+            <apex:param id="elementID" name="elementID" value="" assignTo="{!elementID}" />
+            <apex:param id="newtxtvalue" name="newtxtvalue" value="" assignTo="{!newTextboxValue}" />
+            <apex:param id="formData" name="formData" value="" assignTo="{!allFormElementData}" /> 
+        </apex:actionFunction>
+        
+        <div class="mainContainer">
+            
+            <div class="bodySection">
+                
+                <!--prompt-->
+                
+                <div id="require-field-popUp" role="alertdialog" tabindex="-1" aria-labelledby="prompt-heading-id" aria-describedby="prompt-message-wrapper" style="display:none;" class="slds-modal slds-fade-in-open slds-modal_prompt promtSection">
+                  <div class="slds-modal__container">
+                    <div class="slds-modal__header tLeft cHeaader">
+                      <div class="slds-button slds-modal__close slds-button--icon-inverse closePromptDiv" title="Close">
+                        <apex:image url="{!URLFOR($Resource.List_SLDS, 'images/closeAlert.png')}" alt="Close Prompt" styleClass="closePrompt"/>
+                        <span class="slds-assistive-text">Close</span>
+                      </div>
+                      <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate"> The following fields are required and still incomplete, please review and complete prior to submitting:</h2>
+                    </div>
+                    <div class="slds-modal__content pL15 cContent">
+                      <div class="slds-m-top--small slds-m-left--small slds-m-right--small">
+                         <!-- The following fields are required and still incomplete, please review and complete prior to submitting:-->
+                      </div>
+                      <!--<div class="slds-m-top--small slds-m-left--small slds-m-right--small">
+                          Request Type
+                      </div>
+                      <div class="slds-m-top--small slds-m-left--small slds-m-right--small">
+                          Proposed Solutions
+                      </div>
+                      <div class="slds-m-top--small slds-m-left--small slds-m-right--small">
+                          Requested Meeting Date
+                      </div>-->
+                      <!--<div class="slds-m-bottom--small"></div>-->
+                    </div>
+                    <div class="slds-modal__footer slds-theme--default promptFooter">
+                    </div>
+                  </div>
+                </div>
+                
+                <!--prompt-->
+                
+                <apex:actionStatus id="waitStatus">      
+                    <apex:facet name="start">
+                        <div class="waitingSearchDiv" id="el_loading" style="background-color: #fbfbfb; height:100%;opacity:0.65;width:100%;z-index:9999">
+                         <div class="confirmBox"/>
+                         <div class="overlay-back"></div> 
+                         <div class="divLoading"></div>
+                        </div>
+                     </apex:facet>
+                    <apex:facet name="stop"></apex:facet>
+                </apex:actionStatus>
+                
+                <apex:actionstatus id="counterStatus">
+                    <apex:facet name="start">
+                        <div class="waitingSearchDiv" id="el_loading" style="background-color: #fbfbfb; height:100%;opacity:0.65;width:100%;z-index:9999">
+                            <div class="waitingHolder" style="top: 100px; width: 91px;">
+                            <img class="waitingImage" src="/img/loading.gif" title="Please Wait..." />
+                            <span class="waitingDescription">Loading...</span>
+                            </div>
+                        </div>
+                    </apex:facet>
+                    <apex:facet name="stop"></apex:facet>
+                </apex:actionstatus>
+                    
+                <apex:outputPanel id="messageDiv" >
+                    
+                    <div class="overlayErrorDiv">
+                    <div class="slds-notify_container">
+                      <div class="slds-notify slds-notify--toast slds-theme--error" role="alert">
+                        <span class="slds-assistive-text">Error</span>
+                        <button class="slds-button slds-notify__close slds-button--icon-inverse" title="Close">
+                          <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <div class="slds-notify__content slds-grid">
+                          
+                          <div class="slds-col slds-align-middle">
+                            <h2 class="slds-text-heading--small" id="errorMsg">{!pageMessage}</h2>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    </div>
+                    
+                    <div class="overlaySuccessDiv">
+                        <div class="slds-notify_container">
+                          <div class="slds-notify slds-notify--toast slds-theme--success" role="alert">
+                            <span class="slds-assistive-text">Error</span>
+                            <button class="slds-button slds-notify__close slds-button--icon-inverse" title="Close">
+                              <span class="slds-assistive-text">Close</span>
+                            </button>
+                            <div class="slds-notify__content slds-grid">
+                              
+                              <div class="slds-col slds-align-middle">
+                                <h2 class="slds-text-heading--small" id="successMsg">
+                                    {!pageMessage}
+                                    </h2>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        </div>
+                        
+                    <script>
+                    
+                    function renderSectionInput(elementId,newValue){
+                        
+                        var mapIDInputFieldName = '{!mapIDInputFieldNameJson}';
+                        if(mapIDInputFieldName){
+                            var InputFieldName = JSON.parse('{!mapIDInputFieldNameJson}');
+                        }
+                        var lstSections = JSON.parse('{!lstSectionJson}');
+                        var mapIDSectionInput =  {!mapIDSectionInputJson};
+                        var varify = true;
+                        var FieldNamewithValue = [];
+                        
+                        for (var key in mapIDSectionInput) {
+                            
+                            var sectioninput = mapIDSectionInput[key];
+                            
+                            for (var i = 0; i < sectioninput.length; i++) {
+                                
+                                if (sectioninput[i].Type__c == 'Checkbox') 
+                                {
+                                    
+                                    var elementExist = j$('#'+sectioninput[i].Id).length;
+                                    if(elementExist > 0){
+                                        var data = fetchCheckBoxValById(sectioninput[i].Id);
+                                        //if(data){
+                                            if(mapIDInputFieldName.hasOwnProperty(sectioninput[i].Id)){
+                                                var obj = {APIName: InputFieldName[sectioninput[i].Id],InputId : sectioninput[i].Id,value : data};
+                                            }
+                                            else{
+                                                var obj = {APIName: '',InputId : sectioninput[i].Id,value : data};
+                                            }
+                                            
+                                            FieldNamewithValue.push(obj);
+                                        //}
+                                    }
+                                }
+                                else if (sectioninput[i].Type__c == 'Multi-Select Picklist') 
+                                {
+                                    var elementExist = j$('#'+sectioninput[i].Id).length;
+                                    
+                                    if(elementExist > 0){
+                                        var data = fetchMultiSelectedValById(sectioninput[i].Id);
+                                        if(data){
+                                            var text = JSON.parse(data);
+                                            var res;
+                                            var temp = "";
+                                            for(var member in text){
+                                                temp += text[member].label;
+                                                temp += ';';
+                                            }
+                                            if(temp.length > 0){
+                                                res = temp.substring(0, temp.length - 1);
+                                            }
+                                            else{
+                                                res = '';
+                                            }
+                                            
+                                            if(mapIDInputFieldName.hasOwnProperty(sectioninput[i].Id)){
+                                                var obj = {APIName: InputFieldName[sectioninput[i].Id],InputId : sectioninput[i].Id,value : res};
+                                            }
+                                            else{
+                                                var obj = {APIName: '',InputId : sectioninput[i].Id,value : res};
+                                            }
+                                            FieldNamewithValue.push(obj);
+                                        }
+                                    }
+                                }
+                                else {
+                                    
+                                    var elementExist = j$('#'+sectioninput[i].Id).length;
+                                    if(elementExist > 0)
+                                    {
+                                        var data = document.getElementById(sectioninput[i].Id).value;
+                                        if(mapIDInputFieldName.hasOwnProperty(sectioninput[i].Id)){
+                                            var obj = {APIName: InputFieldName[sectioninput[i].Id],InputId : sectioninput[i].Id,value : data};
+                                        }
+                                        else{
+                                            var obj = {APIName: '',InputId : sectioninput[i].Id,value : data};
+                                        }
+                                        FieldNamewithValue.push(obj);
+                                        
+                                    }
+                                    
+                                }
+                            }
+                        }
+                        console.log('=================FieldNamewithValue===================',FieldNamewithValue);
+                        referenceSectionInputRender(elementId,newValue,JSON.stringify(FieldNamewithValue));
+                    }
+                    
+                    function afterSave(){
+                        
+                        /*Page - less content issue*/
+                        $wHeight = screen.height;
+                        $wContainer = $wHeight - 12;
+                        j$('.mainContainer').css('min-height', $wContainer); 
+                        /*Page - less content issue*/
+                        
+                        var valid = '{!validForm}';
+                        var saveType = '{!saveType}';
+                        
+                        if(valid == 'true'){
+                            
+                            j$(".overlaySuccessDiv").show().delay(2000).queue(function(n) {
+                              j$(this).fadeOut(); 
+                              n();
+                            });
+                            if(saveType == 'Submit'){
+                                window.top.location.href = '/{!recordId}';
+                            }
+                            
+                            if(RequireFields.length > 0){
+                                for (i = 0; i < RequireFieldsElementID.length; i++) {
+                                    /*if(RequireFieldsType[i] == 'Checkbox'){
+                                        j$('#'+RequireFieldsElementID[i]).parent().find(".slds-checkbox--faux").removeClass("checkboxRequired");
+                                    }*/
+                                    if(RequireFieldsType[i] == 'Multi-Select Picklist'){
+                                        j$('#'+RequireFieldsElementID[i]).find(".selectedData").removeClass("multiSelectRequired"); 
+                                    }
+                                    else{
+                                        j$('#'+RequireFieldsElementID[i]).removeClass("slds-has-error"); 
+                                        
+                                    }
+                                }
+                            }
+                        }
+                        else{
+                            j$(".overlayErrorDiv").show();
+                        }
+                        j$('.divLoading').removeClass('show');
+                    }
+                    /*Addedon 24th may 2017*/ 
+                    /*Function being used to show modal popup before preoceeding for submit*/
+                 
+                    function openModalPopup(saveType, strOverrideMessage)
+                    {
+                        if(strOverrideMessage != '')
+                        {
+                            j$('#submitPopupModalId').show();
+                            j$('#submitPopupModalId').addClass('fadeCss');
+                        }
+                        else
+                        {
+                            fetchFormData(saveType);
+                        }
+    
+                    }
+                   /* function hideModalPopup()
+                    {
+                        j$('#submitPopupModalId').hide();
+                    }
+                    */
+                    function fetchFormData(saveType) 
+                    {
+                        console.log('=======================saveType====================',saveType);
+                        j$('#submitPopupModalId').hide();
+                        j$('#submitPopupModalId').removeClass('fadeCss');
+                        
+                        j$('.confirmBox').after("<div class='alertOverlay'></div>");
+                        j$(".divLoading").addClass('show');
+        
+                        var mapIDInputFieldName = '{!mapIDInputFieldNameJson}';
+                        if(mapIDInputFieldName){
+                            var InputFieldName = JSON.parse('{!mapIDInputFieldNameJson}');
+                        }
+                        var lstSections = JSON.parse('{!lstSectionJson}');
+                        var mapIDSectionInput =  {!mapIDSectionInputJson};
+                        var varify = true;
+                        var FieldNamewithValue = [];
+                        
+                        RequireFields = [];
+                        RequireFieldsElementID = [];
+                        RequireFieldsType = [];
+                        for (var key in mapIDSectionInput) {
+                            
+                            var sectioninput = mapIDSectionInput[key];
+                            for (var i = 0; i < sectioninput.length; i++) {
+                                
+                                if (sectioninput[i].Type__c == 'Checkbox') {
+                                    
+                                    var elementExist = j$('#'+sectioninput[i].Id).length;
+                                    if(elementExist > 0){
+                                        
+                                        var data = fetchCheckBoxValById(sectioninput[i].Id);
+                                        j$('#'+ sectioninput[i].Id + '[required=true]').each(function(){
+                                            if(!data && saveType == 'Submit'){
+                                                //alert(sectioninput[i].Input_Label__c + ' field should not be empty');
+                                                RequireFields.push(sectioninput[i].Input_Label__c);
+                                                RequireFieldsElementID.push(sectioninput[i].Id);
+                                                RequireFieldsType.push(sectioninput[i].Type__c);
+                                                varify = false;
+                                                return false;
+                                            }
+                                        })
+                                    
+                                        if(mapIDInputFieldName.hasOwnProperty(sectioninput[i].Id)){
+                                            var obj = {APIName: InputFieldName[sectioninput[i].Id],InputId : sectioninput[i].Id,value : data};
+                                        }
+                                        else{
+                                            var obj = {APIName: '',InputId : sectioninput[i].Id,value : data};
+                                        }
+                                        
+                                        FieldNamewithValue.push(obj);
+                                    }
+                                   
+                                }
+                                else if (sectioninput[i].Type__c == 'Multi-Select Picklist') {
+                
+                                    var elementExist = j$('#'+sectioninput[i].Id).length;
+                                    if(elementExist > 0){
+                                        
+                                        var data = fetchMultiSelectedValById(sectioninput[i].Id);
+                                        var text = JSON.parse(data);
+                                        var res;
+                                        var temp = "";
+                                        for(var member in text){
+                                            temp += text[member].label;
+                                            temp += ';';
+                                        }
+                                        if(temp.length > 0){
+                                            res = temp.substring(0, temp.length - 1);
+                                        }
+                                        else{
+                                            res = '';
+                                        }
+                                        
+                                        j$('#'+ sectioninput[i].Id + '[data-require=true]').each(function(){
+                                            if(!res && saveType == 'Submit'){
+                                                //alert(sectioninput[i].Input_Label__c + ' field should not be empty');
+                                                RequireFields.push(sectioninput[i].Input_Label__c);
+                                                RequireFieldsElementID.push(sectioninput[i].Id);
+                                                RequireFieldsType.push(sectioninput[i].Type__c);
+                                                varify = false;
+                                                return false;
+                                            }
+                                        })
+                
+                                        
+                                        
+                                        if(mapIDInputFieldName.hasOwnProperty(sectioninput[i].Id)){
+                                            var obj = {APIName: InputFieldName[sectioninput[i].Id],InputId : sectioninput[i].Id,value : res};
+                                           
+                                        }
+                                        else{
+                                            var obj = {APIName: '',InputId : sectioninput[i].Id,value : res};
+                                        }
+                                        
+                                        FieldNamewithValue.push(obj);
+                                    }
+                                    
+                                }
+                                else if (sectioninput[i].Type__c == 'Picklist'){
+                                    var elementExist = j$('#'+sectioninput[i].Id).length;
+                                    if(elementExist > 0){
+                        
+                                        var data = document.getElementById(sectioninput[i].Id).value;
+                                        j$('#'+ sectioninput[i].Id + '[required=true]').each(function(){
+                                            if(data == 'None' && saveType == 'Submit'){
+                                                //alert(sectioninput[i].Input_Label__c + ' field should not be empty');
+                                                RequireFields.push(sectioninput[i].Input_Label__c);
+                                                RequireFieldsElementID.push( sectioninput[i].Id);
+                                                RequireFieldsType.push(sectioninput[i].Type__c);
+                                                varify = false;
+                                                return false;
+                                            }
+                                        })
+                                        
+                                        if(mapIDInputFieldName.hasOwnProperty(sectioninput[i].Id)){
+                                            var obj = {APIName: InputFieldName[sectioninput[i].Id],InputId : sectioninput[i].Id,value : data};
+                                        }
+                                        else{
+                                            var obj = {APIName: '',InputId : sectioninput[i].Id,value : data};
+                                        }
+                                        
+                                        FieldNamewithValue.push(obj);
+                                    }
+                                }
+                                else {
+                                
+                                    var elementExist = j$('#'+sectioninput[i].Id).length;
+                                    if(elementExist > 0){
+                        
+                                        var data = document.getElementById(sectioninput[i].Id).value;
+                                        j$('#'+ sectioninput[i].Id + '[required=true]').each(function(){
+                                            if(!data && saveType == 'Submit'){
+                                                
+                                                //alert(sectioninput[i].Input_Label__c + ' field should not be empty');
+                                                RequireFields.push(sectioninput[i].Input_Label__c);
+                                                RequireFieldsElementID.push(sectioninput[i].Id);
+                                                RequireFieldsType.push(sectioninput[i].Type__c);
+                                                varify = false;
+                                                return false;
+                                            }
+                                        })
+                                        
+                                        if(mapIDInputFieldName.hasOwnProperty(sectioninput[i].Id)){
+                                            var obj = {APIName: InputFieldName[sectioninput[i].Id],InputId : sectioninput[i].Id,value : data};
+                                        }
+                                        else{
+                                            var obj = {APIName: '',InputId : sectioninput[i].Id,value : data};
+                                        }
+                                        
+                                        FieldNamewithValue.push(obj);
+                                    }
+                                    
+                                }
+                            }
+                        }
+                        
+                        /* Remove Require class */
+                        
+                        var neededFields = j$("[required=true]");
+                        for(var i = 0; i < neededFields.length; i++){
+                            
+                            /*if(neededFields[i].type == 'checkbox'){
+                                j$('#'+neededFields[i].id).parent().find(".slds-checkbox--faux").removeClass("checkboxRequired");
+                            }
+                            else{*/
+                                neededFields[i].classList.remove("slds-has-error");
+                            /*}*/
+                        }
+                        
+                        var neededFieldsMultiSelect = j$("[data-require=true]");
+                        for(var i = 0; i < neededFieldsMultiSelect.length; i++){
+                            j$('#'+neededFieldsMultiSelect[i].id).find(".selectedData").removeClass("multiSelectRequired"); 
+                        }
+                        
+                        /* Remove Require class */
+                        
+                        
+                        /* ZM List Phase 1 Fixes Round 3
+                        2.	Missing Required Fields on Submit*/
+                        if(RequireFields.length > 0){
+                            
+                            for (i = 0; i < RequireFieldsElementID.length; i++) {
+                                
+                                /*if(RequireFieldsType[i] == 'Checkbox'){
+                                  
+                                    j$('#'+RequireFieldsElementID[i]).parent().find(".slds-checkbox--faux").addClass("checkboxRequired");
+                                }*/
+                                if(RequireFieldsType[i] == 'Multi-Select Picklist'){
+                                    j$('#'+RequireFieldsElementID[i]).find(".selectedData").addClass("multiSelectRequired"); 
+                                }
+                                else{
+                                    document.getElementById(RequireFieldsElementID[i]).className += ' slds-has-error';
+                                }
+                                
+                            }
+                            
+                            /* display require field pop-up */ 
+                            j$("#require-field-popUp").show(); 
+                            var htmlString = '';
+                            var classNames= 'slds-m-top--small slds-m-left--small slds-m-right--small requirefield';
+                            htmlString += "<ul class='slds-list--dotted cList'>";
+                            RequireFields.forEach(function(field){
+                                htmlString += '<li class="' + classNames + '">' +  field + '</li>'; 
+                            });
+                            htmlString += "</ul>";
+                            htmlString += '<div class="slds-m-bottom--small"></div>';
+                            /*j$(".pL15 > .requirefield").remove();*/
+                            j$(".pL15 > ul").remove();
+                            j$('.pL15').append(htmlString)
+                            j$(".promtSection").after("<div class='slds-backdrop slds-backdrop--open'></div>");
+                            
+                            /* display require field pop-up */
+                        } 
+                        
+                        if(varify == true){
+                            saveResponseDraft(JSON.stringify(FieldNamewithValue),saveType);
+                        }
+                        else{
+                            j$('.divLoading').removeClass('show');
+                        }
+                    }
+                    
+                    </script>
+                    
+                </apex:outputPanel>
+                
+                <div class="slds-wrap slds-grid">
+                    
+                    <!--<apex:outputPanel layout="block" rendered="{!lstMasterTemplate == null}">-->
+                        <!--Logo-->
+                        <div class="slds-size--1-of-1 boxHeader">
+                            <!--<div class="siteLogo">{!sobjectRecordName}</div>-->
+                            <a href="/{!recordId}">{!sobjectRecordName}</a>
+                            <!--Template Header-->
+                            <div class="slds-text-heading--large slds-m-horizontal--medium slds-m-top--xxx-small slds-text-align--center"
+                                 style="width: 70%!important;">{!objTemplate.Master_Template__r.Label__c}</div>
+                                 <input type="button" value="Revision History" style="" class="slds-button slds-button--brand revisionBtn"/>
+                            
+                        </div>
+                        <!--Section-->
+                        <apex:outputPanel layout="block" id="sectionsDiv" styleClass="sectionsDiv">
+                            <div class="slds-size--1-of-1 slds-p-horizontal--medium slds-m-vertical--x-small noHSpaceMbl">
+                            <div class="fSectionTopSpacing"></div>
+                            <apex:outputPanel rendered="{!hasSection}">
+                                <apex:repeat value="{!lstSection}" var="section">
+                                    
+                                    <apex:outputPanel layout="block" rendered="{!mapSectionDisplayType[section.Id] == 'Show'}">
+                                        <div class="slds-card slds-card--narrow">
+                                        
+                                            <div class="slds-card__body slds-m-top--small ">
+                                                <h3 class="slds-section-title--divider sectionHeading">{!section.Label__c} </h3>
+                                                <apex:repeat value="{!mapIDSectionInput[section]}" var="input">
+                                                    
+                                                    <!--Input(Questions)-->
+                                                    <apex:outputPanel layout="block" rendered="{!mapInputWrapper[input.Id].display}">
+                                                       
+                                                        <c:List_GenericInput fieldType="{!input.Type__c}" displayLabel="{!input.Input_Label__c}" DefaultVal="{!input.Default_Value__c}"
+                                                            elementId="{!input.Id}" strValidationError="{!input.Validation_Error__c}" SelectOptionVals="{!mapIDInputPicklistJson[input.Id]}" helpText="{!input.Help_Text__c}" 
+                                                            isRequired="{!mapInputWrapper[input.Id].required}" isReadOnly="{!mapInputWrapper[input.Id].readOnly}" 
+                                                            isonchangeFunction="{!mapOnchangeRequired[input.Id]}" limit="{!input.Custom_Data_Validation__c}" isLocked="{!isLocked}" isFormEditable="{!isFormEditable}"/>
+                                                    </apex:outputPanel>
+                                                    
+                                                </apex:repeat>
+                                                <br clear="all" />
+                                            </div>
+                                            
+                                        </div>
+                                         <div class="sectionSpacing" />
+                                    </apex:outputPanel>
+                                    
+                                </apex:repeat>
+                            </apex:outputPanel>
+                            <div class="btmSpacing"></div>
+                            </div>
+                        </apex:outputPanel>
+                        <!--Footer-->
+                        <div class="boxFooter">
+                            <button type="button" class="slds-button slds-button--destructive slds-m-left--small cancelBtn" 
+                                    onclick="window.top.location.href = '/{!recordId}';">Cancel</button>
+                                    
+                            <button type="button" class="slds-button slds-button--brand saveDBtn" onclick="fetchFormData('Draft');">Save Draft</button>
+                            
+                            <!--Updated button according phase 1 fixes R2-->
+                            <button type="button" id="submitBtnId" class="slds-button slds-button--brand slds-m-right--small submitBtn" 
+                                    onclick="openModalPopup('Submit', '{!JSENCODE(strOverrideMessage)}');"></button>
+                        </div>
+                    <!--</apex:outputPanel>-->
+                    
+                </div>
+            
+            </div>
+            
+            <apex:outputPanel rendered="{!isSingleResponseSurvey}">
+                <div class="floating-box">
+                    <c:List_Revision isLocked="{!isLocked}"/>
+                </div>
+            </apex:outputPanel>
+            
+        </div>
+    
+        <!--Modal added on 24th May according Zmlist Phase 1 fixes R2-->
+          <div aria-hidden="false" id="submitPopupModalId" role="dialog" class="slds-modal slds-modal--prompt slds-fade-in-open slds-hide">
+            <div class="slds-modal__container slds-modal--prompt">
+              <div class="slds-modal__header slds-theme--error slds-theme--alert-texture">
+                <h2 class="slds-text-heading--medium">Submit Information</h2>
+              </div>
+              <div class="slds-modal__content slds-p-around--medium">
+                <div>
+                  <span><apex:outputText style="white-space:pre-wrap;" value="{!SUBSTITUTE(JSENCODE(strOverrideMessage), '\r\n','<br/>')}" escape="false"/>.</span>
+                </div>
+              </div>
+              <div class="slds-modal__footer slds-theme--default">
+                <button type="button" class="slds-button slds-button--neutral" onclick="fetchFormData('Submit');">Okay</button>
+              </div>
+            </div>
+          </div>
+        <!--Modal added on 24th May according Zmlist Phase 1 fixes R2-->
+    </apex:form>
+    
+    </html>
+
+</apex:page>
